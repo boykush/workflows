@@ -1,0 +1,13 @@
+name: workflows
+version: 0.1.0
+description: Agent config for working in this repository, which ai-review also reads at run time
+targets:
+  - claude
+  - codex
+# apm install generates .mcp.json and .codex/config.toml from this file; don't edit them by hand.
+# ai-review checks this repository out and hands the generated .mcp.json and the ade-rule-dsl
+# reference to the reviewer, so its MCP server and DSL grammar are pinned here as well.
+dependencies:
+  apm:
+    - boykush/ai-plugins/plugins/adr-remote-mcp#0a6dd936c8be229cae095eaf40c0170db59bf45b
+  mcp: []
