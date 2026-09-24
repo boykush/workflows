@@ -30,8 +30,8 @@ jobs:
         with:
           persist-credentials: false
 
-      # This repository at the commit the caller pinned, for the token action, the MCP
-      # config and the DSL reference, so they move together with this file.
+      # This repository at the commit the caller pinned, for the MCP config and the DSL
+      # reference Claude reads, so they move together with this file.
       - name: Checkout the reviewer
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -53,7 +53,7 @@ jobs:
 
       - name: Fetch the Claude Code token
         id: claude-token
-        uses: ./.ai-review/.github/actions/claude-code-token
+        uses: $/.github/actions/claude-code-token
 
       - name: Review
         id: review
