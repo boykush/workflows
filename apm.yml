@@ -5,9 +5,10 @@ targets:
   - claude
   - codex
 # apm install generates .mcp.json and .codex/config.toml from this file; don't edit them by hand.
-# ai-review checks this repository out and hands the generated .mcp.json and the ade-rule-dsl
-# reference to the reviewer, so its MCP server and DSL grammar are pinned here as well.
+# ai-review checks this repository out and hands the generated .mcp.json and the adr-review
+# and ade-rule-dsl skills to the reviewer, so its MCP server, review procedure and DSL grammar
+# are pinned here as well.
 dependencies:
   apm:
-    - boykush/ai-plugins/plugins/adr-remote-mcp#0a6dd936c8be229cae095eaf40c0170db59bf45b
+    - boykush/ai-plugins/plugins/adr-remote-mcp#6981c93f28697dfd6c99a261407a12d32664244d
   mcp: []
