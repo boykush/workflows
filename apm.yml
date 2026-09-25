@@ -10,5 +10,5 @@ targets:
 # are pinned here as well.
 dependencies:
   apm:
-    - boykush/ai-plugins/plugins/adr-remote-mcp#6981c93f28697dfd6c99a261407a12d32664244d
+    - boykush/ai-plugins/plugins/adr-remote-mcp#7b757c1de428713dd667b8d74f466762a0229c69
   mcp: []
