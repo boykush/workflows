@@ -48,6 +48,7 @@ jobs:
 - その repo に [Claude GitHub App](https://github.com/apps/claude) を install する
 - [infrastructure-as-code](https://github.com/boykush/infrastructure-as-code) の `terraform/variables.tf` で、`claude_code_repositories` に repo を足す
 - [github-management](https://github.com/boykush/github-management) の catalog で、その repo の Component に依存を書く
+- この repo の `apm.yml` が SHA で固定している repo なら、caller は SHA ではなく `main` で呼ぶ。互いに SHA で固定すると、Renovate が交互に上げ続けて止まらない
 
 caller を足す PR 自身では check が失敗する。App の token の交換は、workflow が default branch にあることを求めるため。
 
