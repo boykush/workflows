@@ -14,7 +14,9 @@ public にしてあるのは、個人アカウントの private repo に置い�
 
 ### ai-review
 
-入れるかどうかは repo ごとに決める。入れる repo が自分で caller を置く:
+入れるかどうかは repo ごとに決める。private repo には入れない。ruleset が無く、承認が merge の条件にならないので、push 前にセッションがルールと照合するのに任せる。
+
+入れる repo が自分で caller を置く:
 
 ```yaml
 name: ai-review
@@ -48,6 +50,8 @@ jobs:
 
 caller を足す PR 自身では check が失敗する。App の token の交換は、workflow が default branch にあることを求めるため。
 
+この repo 自身の PR も `.github/workflows/ai-review-self.yml` から ai-review にかける。ほかの repo と違って SHA で固定せず、`$/` で呼ぶ。自分の HEAD に固定すると、Renovate の bump を merge するたびに HEAD が進み、次の bump が開き続けるため。PR の commit の ai-review.yml が走るので、ai-review.yml を変える PR は、変えた後の版に review される。
+
 ### github-app-token
 
 GITHUB_TOKEN で足りない操作をする workflow が App のトークンを取るところ。App の private key は AWS KMS から出ず、run が受け取るのは JWT への署名1回分:
@@ -74,4 +78,4 @@ GITHUB_TOKEN で足りない操作をする workflow が App のトークンを�
 
 ## 変えるとき
 
-呼び出し側は SHA で固定しているので、ここを変えたら各 repo の固定を上げる。
+呼び出し側の SHA は、[renovate-runner](https://github.com/boykush/renovate-runner) の Renovate が main の HEAD まで上げ、automerge する。ここを変えると、次の Renovate の実行で各 repo に届く。

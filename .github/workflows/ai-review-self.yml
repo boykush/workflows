@@ -1,0 +1,19 @@
+# This repository's own pull requests go through ai-review.yml too, and its approval is
+# the one the default branch's ruleset asks for. It is called with $/ rather than a SHA:
+# Renovate would bump a pin to this repository's HEAD, and each bump it merged would move
+# HEAD again. So a pull request here is reviewed by its own version of ai-review.yml.
+name: ai-review
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions: {}
+
+jobs:
+  ai-review:
+    uses: $/.github/workflows/ai-review.yml
+    permissions:
+      contents: read
+      pull-requests: read
+      id-token: write
