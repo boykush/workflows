@@ -1,0 +1,129 @@
+name: GitHub App Token
+description: >-
+  Mints an installation token for one of the owner's GitHub Apps, with AWS KMS
+  signing the App's JSON Web Token under the calling job's own GitHub OIDC
+  identity, so no repository holds a copy of the App's private key. The job
+  needs `id-token: write`.
+
+inputs:
+  app:
+    description: >-
+      The App's name as the github_apps variable in
+      boykush/infrastructure-as-code writes it, e.g. terraform-ci. The KMS key,
+      the role allowed to sign with it and the App's own id all follow from it,
+      so a caller names the App and nothing else about it.
+    required: true
+  owner:
+    description: >-
+      Widens the token to every repository of the App's installation under this
+      owner. Leave it unset for a token that reaches only the calling repository.
+    required: false
+    default: ""
+  repositories:
+    description: >-
+      Comma or newline-separated repositories to reach instead, within the same
+      installation.
+    required: false
+    default: ""
+
+  # The token carries only the permissions named here, never everything the App
+  # was installed with, so each caller says what it is about to do. These are
+  # the scopes callers ask for today — add an input, and its line in the step
+  # below, when one needs another.
+  permission-administration:
+    description: Repository settings, collaborators and rulesets — read or write.
+    required: false
+    default: ""
+  permission-checks:
+    description: Check runs and check suites — read or write.
+    required: false
+    default: ""
+  permission-contents:
+    description: Contents, commits, branches and releases — read or write.
+    required: false
+    default: ""
+  permission-issues:
+    description: Issues, comments and labels — read or write.
+    required: false
+    default: ""
+  permission-pull-requests:
+    description: Pull requests, reviews, comments and labels — read or write.
+    required: false
+    default: ""
+  permission-statuses:
+    description: Commit statuses — read or write.
+    required: false
+    default: ""
+  permission-workflows:
+    description: Files under .github/workflows/ — write.
+    required: false
+    default: ""
+
+outputs:
+  token:
+    description: >-
+      The installation token. Masked, and revoked when the job ends, so it
+      outlives neither the job nor an hour.
+    value: ${{ steps.token.outputs.token }}
+
+runs:
+  using: composite
+
+  steps:
+    # Which App a name answers to is recorded in boykush/github-management's
+    # catalog, as resource:<app>-app; these are the same ids, put where a run can
+    # reach them. An id that drifts from the catalog is refused by GitHub when the
+    # token is asked for, rather than signing as the wrong App.
+    - name: Name the App
+      id: app
+      shell: bash
+      env:
+        APP: ${{ inputs.app }}
+      run: |
+        set -euo pipefail
+        client_id=""
+        app_id=""
+        case "${APP}" in
+          terraform-ci) app_id=4105862 ;;
+          renovate) client_id=Iv23liaejPgQYkemEFr5 ;;
+          pr-approver) client_id=Iv23liuQe4mdgQyAnzLM ;;
+          repo-writer) client_id=Iv23li08SMJuhhwV0lBk ;;
+          *)
+            echo "::error::no App is named '${APP}' here — the Apps are listed in boykush/github-management's catalog, and a new one is added to this action with its id"
+            exit 1
+            ;;
+        esac
+        # The account id is not a secret and neither ARN is usable without an
+        # OIDC sub the role's trust policy names, so they are written here and
+        # callers pass nothing. The alias ARN also carries the signing region.
+        account=509266991346
+        {
+          echo "client-id=${client_id}"
+          echo "app-id=${app_id}"
+          echo "kms-key-id=arn:aws:kms:ap-northeast-1:${account}:alias/github-app-${APP}"
+          echo "role-to-assume=arn:aws:iam::${account}:role/github-actions-github-app-${APP}"
+        } >> "${GITHUB_OUTPUT}"
+
+    # The one step that reaches AWS. The credentials it takes with the run's
+    # OIDC token stay inside it, and what the role may do with the key is a
+    # single RS256 signature over this App's JSON Web Token.
+    - name: Mint the token
+      id: token
+      uses: suzuki-shunsuke/create-github-app-token-aws-kms@b4a29a5f1cd6ea2b633d6ee6d9806dbce26493cf # v0.0.3
+      with:
+        client-id: ${{ steps.app.outputs.client-id }}
+        app-id: ${{ steps.app.outputs.app-id }}
+        kms-key-id: ${{ steps.app.outputs.kms-key-id }}
+        role-to-assume: ${{ steps.app.outputs.role-to-assume }}
+        # Whether a token spans the whole installation is the caller's
+        # decision, made where the reason for it is written; empty is the
+        # calling repository alone. The run's log says which it was.
+        owner: ${{ inputs.owner }}
+        repositories: ${{ inputs.repositories }}
+        permission-administration: ${{ inputs.permission-administration }}
+        permission-checks: ${{ inputs.permission-checks }}
+        permission-contents: ${{ inputs.permission-contents }}
+        permission-issues: ${{ inputs.permission-issues }}
+        permission-pull-requests: ${{ inputs.permission-pull-requests }}
+        permission-statuses: ${{ inputs.permission-statuses }}
+        permission-workflows: ${{ inputs.permission-workflows }}
