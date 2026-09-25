@@ -4,8 +4,8 @@ dependencies:
 - repo_url: boykush/ai-plugins
   name: adr-remote-mcp
   host: github.com
-  resolved_commit: 6981c93f28697dfd6c99a261407a12d32664244d
-  resolved_ref: 6981c93f28697dfd6c99a261407a12d32664244d
+  resolved_commit: 7b757c1de428713dd667b8d74f466762a0229c69
+  resolved_ref: 7b757c1de428713dd667b8d74f466762a0229c69
   version: 0.1.0
   virtual_path: plugins/adr-remote-mcp
   is_virtual: true
