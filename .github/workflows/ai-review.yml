@@ -77,7 +77,10 @@ jobs:
             5. Submit exactly one review by running exactly one of these commands, character for character: with no findings, `gh pr review ${{ github.event.pull_request.number }} --approve --body-file .ai-review-body.md`; with findings, `gh pr review ${{ github.event.pull_request.number }} --request-changes --body-file .ai-review-body.md`. Run it on its own, with no `cd` before it, no redirection after it and no quotes around the path: any other form is refused.
 
             Answer with verdict "pass" when there are no findings and "fail" otherwise, a short summary in Japanese, and each finding with the id of the decision the rule belongs to, the rule's name, the path it concerns and the explanation in Japanese.
+          # The Sonnet family by its alias: a change in Claude Code's default can't swap the
+          # reviewer's model, and a newer Sonnet still arrives without an edit here.
           claude_args: >-
+            --model sonnet
             --mcp-config .ai-review/.mcp.json
             --allowedTools "mcp__adr__list_rules,mcp__adr__list_decisions,mcp__adr__get_decision,Bash(gh pr view:*),Bash(gh pr diff:*),Edit(./.ai-review-body.md),Bash(gh pr review ${{ github.event.pull_request.number }} --approve --body-file .ai-review-body.md),Bash(gh pr review ${{ github.event.pull_request.number }} --request-changes --body-file .ai-review-body.md),Bash(gh pr review ${{ github.event.pull_request.number }} --approve --body-file ./.ai-review-body.md),Bash(gh pr review ${{ github.event.pull_request.number }} --request-changes --body-file ./.ai-review-body.md),Bash(gh pr review ${{ github.event.pull_request.number }} --approve --body-file ${{ github.workspace }}/.ai-review-body.md),Bash(gh pr review ${{ github.event.pull_request.number }} --request-changes --body-file ${{ github.workspace }}/.ai-review-body.md)"
             --max-turns 40
