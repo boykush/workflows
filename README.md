@@ -42,12 +42,13 @@ jobs:
 - モデルは Sonnet。`--model sonnet` と alias で指定しているので、Claude Code の既定が変わっても入れ替わらず、新しい Sonnet にはここを変えずに上がる
 - 承認するかを Claude が決めるので、最後の step で、読んだ commit への claude[bot] の review が構造化出力の判定と合っているかを確かめ、合わなければ失敗する
 - MCP サーバーに繋がらなければ失敗する。繋がらないまま走らせると、決定を1つも読まずに通してしまうため。サーバーを載せている cluster は夜間止まる
+- レビューされる repo の tag は、[github-management](https://github.com/boykush/github-management) の catalog にある、repo と同じ名前の Component の `metadata.tags` から読み、adr サーバーへ `Adi-Tags` として渡す。tag の付いた決定のルールは、その tag を持つ repo にだけ届くため。repo ごとに宣言を書き直させず、repo が何であるかを catalog の1箇所に置く。catalog を引けなければ失敗する。tag を欠いたまま走らせると、縛るルールより少ないルールで通してしまうため
 
 入れるときに要るもの:
 
 - その repo に [Claude GitHub App](https://github.com/apps/claude) を install する
 - [infrastructure-as-code](https://github.com/boykush/infrastructure-as-code) の `terraform/variables.tf` で、`claude_code_repositories` に repo を足す
-- [github-management](https://github.com/boykush/github-management) の catalog で、その repo の Component に依存を書く
+- [github-management](https://github.com/boykush/github-management) の catalog で、その repo の Component に依存を書き、当てはまる tag（boykush/adr の README の「タグ」）を付ける
 - この repo の `apm.yml` が SHA で固定している repo なら、caller は SHA ではなく `main` で呼ぶ。互いに SHA で固定すると、Renovate が交互に上げ続けて止まらない
 
 caller を足す PR 自身では check が失敗する。App の token の交換は、workflow が default branch にあることを求めるため。
