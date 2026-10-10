@@ -65,7 +65,7 @@ jobs:
         run: |
           set -euo pipefail
           request=$(jq -nc --arg name "$NAME" \
-            '{jsonrpc:"2.0",id:1,method:"tools/call",params:{name:"get-catalog-entity",arguments:{kind:"Component",name:$name}}}')
+            '{jsonrpc:"2.0",id:1,method:"tools/call",params:{name:"catalog.get-catalog-entity",arguments:{kind:"Component",name:$name}}}')
           response=$(curl -fsS -m 20 "$CATALOG_URL" \
             -H 'Content-Type: application/json' \
             -H 'Accept: application/json, text/event-stream' \
@@ -77,14 +77,12 @@ jobs:
           # The catalog is public and read-only, so what it answered can go in the log.
           if ! jq -e '.result.isError != true and .result.content[0].text != null' <<<"$response" > /dev/null; then
             echo "::error::The catalog did not return component:$NAME: $response"
-            curl -fsS -m 20 "$CATALOG_URL" -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
-              -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | sed -n 's/^data: //p' | jq -c '.result.tools[]? | {name, inputSchema}' || true
             exit 1
           fi
           # The entity comes back as JSON text, which may be fenced as a code block.
           tags=$(jq -r '.result.content[0].text' <<<"$response" \
             | sed '/^```/d' \
-            | jq -er '.metadata.tags // [] | join(",")')
+            | jq -er '(.entity // .) | .metadata.tags // [] | join(",")')
           echo "component:$NAME declares: ${tags:-no tags}"
           jq --arg tags "$tags" '.mcpServers.adr.headers["Adi-Tags"] = $tags' .ai-review/.mcp.json > "$RUNNER_TEMP/mcp.json"
           mv "$RUNNER_TEMP/mcp.json" .ai-review/.mcp.json
