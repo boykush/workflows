@@ -74,8 +74,13 @@ jobs:
           if grep -q '^data: ' <<<"$response"; then
             response=$(sed -n 's/^data: //p' <<<"$response")
           fi
+          # The catalog is public and read-only, so what it answered can go in the log.
+          if ! jq -e '.result.isError != true and .result.content[0].text != null' <<<"$response" > /dev/null; then
+            echo "::error::The catalog did not return component:$NAME: $response"
+            exit 1
+          fi
           # The entity comes back as JSON text, which may be fenced as a code block.
-          tags=$(jq -er 'select(.result.isError != true) | .result.content[0].text' <<<"$response" \
+          tags=$(jq -r '.result.content[0].text' <<<"$response" \
             | sed '/^```/d' \
             | jq -er '.metadata.tags // [] | join(",")')
           echo "component:$NAME declares: ${tags:-no tags}"
