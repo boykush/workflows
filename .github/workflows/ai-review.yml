@@ -53,6 +53,35 @@ jobs:
             -H 'Accept: application/json, text/event-stream' \
             -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ai-review","version":"0"}}}'
 
+      # A decision tagged in boykush/adr, and its rule, reach only the repositories that
+      # declare one of its tags. What a repository is, such as the language it is written
+      # in, is recorded once as the tags of its Component in the catalog, so the review
+      # declares those rather than each repository restating them. A failed lookup stops
+      # the review: without the tags, the change would pass against fewer rules than bind it.
+      - name: Declare the repository's tags from the catalog
+        env:
+          CATALOG_URL: https://backstage.boykush.com/api/mcp-actions/v1/catalog
+          NAME: ${{ github.event.repository.name }}
+        run: |
+          set -euo pipefail
+          request=$(jq -nc --arg name "$NAME" \
+            '{jsonrpc:"2.0",id:1,method:"tools/call",params:{name:"get-catalog-entity",arguments:{kind:"Component",name:$name}}}')
+          response=$(curl -fsS -m 20 "$CATALOG_URL" \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json, text/event-stream' \
+            -d "$request")
+          # Streamable HTTP may answer as an event stream, the message then being its data line.
+          if grep -q '^data: ' <<<"$response"; then
+            response=$(sed -n 's/^data: //p' <<<"$response")
+          fi
+          # The entity comes back as JSON text, which may be fenced as a code block.
+          tags=$(jq -er 'select(.result.isError != true) | .result.content[0].text' <<<"$response" \
+            | sed '/^```/d' \
+            | jq -er '.metadata.tags // [] | join(",")')
+          echo "component:$NAME declares: ${tags:-no tags}"
+          jq --arg tags "$tags" '.mcpServers.adr.headers["Adi-Tags"] = $tags' .ai-review/.mcp.json > "$RUNNER_TEMP/mcp.json"
+          mv "$RUNNER_TEMP/mcp.json" .ai-review/.mcp.json
+
       - name: Fetch the Claude Code token
         id: claude-token
         uses: $/.github/actions/claude-code-token
