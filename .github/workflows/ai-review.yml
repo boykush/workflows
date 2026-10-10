@@ -77,6 +77,8 @@ jobs:
           # The catalog is public and read-only, so what it answered can go in the log.
           if ! jq -e '.result.isError != true and .result.content[0].text != null' <<<"$response" > /dev/null; then
             echo "::error::The catalog did not return component:$NAME: $response"
+            curl -fsS -m 20 "$CATALOG_URL" -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+              -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | sed 's/^data: //' | jq -c '.result.tools[]? | {name, inputSchema}' || true
             exit 1
           fi
           # The entity comes back as JSON text, which may be fenced as a code block.
