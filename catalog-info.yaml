@@ -1,0 +1,24 @@
+# This repository's entities in boykush's Backstage catalog, found on main by its
+# GitHub discovery (boykush/infrastructure-as-code's applications/backstage/).
+# How an entity is written — which edges to draw, what a tag means — is set in
+# boykush/github-management's AGENTS.md and the comments atop its catalog/ files.
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: workflows
+  description: >-
+    repo をまたいで呼ぶ reusable workflow と action の置き場で、呼び出し側は SHA で固定する。PR を boykush/adr
+    のルールと照合して Claude GitHub App として承認する ai-review、Claude Code の token を Parameter Store から読む
+    claude-code-token、GitHub App の private key を AWS KMS に置いたままトークンを発行する github-app-token を
+    置く。どれを入れるかは repo ごとに決め、入れた repo から dependsOn を張る
+spec:
+  type: repository
+  lifecycle: experimental
+  owner: user:boykush
+  system: repo-governance
+  consumesApis:
+    - adr-mcp
+  dependsOn:
+    - component:ai-plugins
+    - component:infrastructure-as-code
+    - resource:claude-github-app
