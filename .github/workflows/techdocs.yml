@@ -1,0 +1,122 @@
+# Builds the calling repository's TechDocs (mkdocs.yml at its root) and publishes the
+# site to the R2 bucket Backstage reads, under the catalog entity it documents. The
+# Backstage image has no MkDocs, so every site is built here and Backstage only serves
+# it. A repository opts in by calling this file pinned by SHA on push to main.
+name: techdocs
+
+on:
+  workflow_call:
+    inputs:
+      entity:
+        description: >-
+          The catalog entity the docs belong to, as namespace/kind/name. Defaults to the
+          Component named after the repository, which is how the catalog names them.
+        type: string
+        required: false
+        default: ""
+
+permissions: {}
+
+jobs:
+  publish:
+    name: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Two pushes in a row would otherwise race to the same prefix in the bucket.
+    concurrency:
+      group: techdocs-${{ github.repository }}
+      cancel-in-progress: false
+    permissions:
+      contents: read # checkout
+      id-token: write # the R2 token's reader role
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # This repository at the commit the caller pinned, for the generator's locked
+      # dependencies, so they move together with this file.
+      - name: Checkout the generator
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .techdocs-generator
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+
+      # mermaid-to-svg turns each mermaid block into an SVG at build time, because the
+      # Backstage image has no addon to draw them in the browser. The docs keep the
+      # mermaid source, so GitHub still renders it.
+      - name: Install the generator
+        run: |
+          set -euo pipefail
+          pip install -r .techdocs-generator/techdocs/requirements.txt
+          npm ci --prefix .techdocs-generator/techdocs
+          echo "${GITHUB_WORKSPACE}/.techdocs-generator/techdocs/node_modules/.bin" >> "${GITHUB_PATH}"
+
+      # Ubuntu's AppArmor refuses the user namespace Chrome sandboxes itself in, and
+      # mermaid-cli drives Chrome.
+      - name: Let Chrome sandbox itself
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      # techdocs-cli strips any plugin it was not told about from mkdocs.yml, so the
+      # one it adds itself is the only way mermaid-to-svg survives — and no caller has
+      # to list it.
+      - name: Generate
+        env:
+          ETAG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          techdocs-cli generate --no-docker --defaultPlugin mermaid-to-svg \
+            --source-dir . --output-dir site --etag "${ETAG}"
+
+      - name: Assume the reader role
+        id: credentials
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          aws-region: ap-northeast-1
+          # boykush/infrastructure-as-code's terraform/aws.tf owns this role, and its
+          # trust lists the repositories that may publish, from their main branch only.
+          role-to-assume: arn:aws:iam::509266991346:role/github-actions-techdocs
+          output-credentials: true
+          output-env-credentials: false
+
+      # The AWS credentials read the R2 token and nothing else; the publish step runs
+      # as the R2 token alone, which is a different key pair for a different service.
+      - name: Publish
+        env:
+          AWS_ACCESS_KEY_ID: ${{ steps.credentials.outputs.aws-access-key-id }}
+          AWS_SECRET_ACCESS_KEY: ${{ steps.credentials.outputs.aws-secret-access-key }}
+          AWS_SESSION_TOKEN: ${{ steps.credentials.outputs.aws-session-token }}
+          AWS_REGION: ap-northeast-1
+          ENTITY: ${{ inputs.entity || format('default/component/{0}', github.event.repository.name) }}
+        run: |
+          set -euo pipefail
+          for key in endpoint access-key-id secret-access-key; do
+            value="$(aws ssm get-parameter --name "/techdocs/${key}" --with-decryption \
+              --query Parameter.Value --output text)"
+            # text output prints a literal None for an empty parameter.
+            if [ -z "${value}" ] || [ "${value}" = None ]; then
+              echo "::error::/techdocs/${key} is empty — write it with 'mise run techdocs:secret ${key}' in boykush/infrastructure-as-code"
+              exit 1
+            fi
+            echo "::add-mask::${value}"
+            declare "r2_${key//-/_}=${value}"
+          done
+          env -u AWS_SESSION_TOKEN \
+            AWS_ACCESS_KEY_ID="${r2_access_key_id}" AWS_SECRET_ACCESS_KEY="${r2_secret_access_key}" \
+            AWS_REGION=auto \
+            techdocs-cli publish --publisher-type awsS3 --storage-name techdocs \
+              --awsEndpoint "https://${r2_endpoint}" --awsS3ForcePathStyle \
+              --entity "${ENTITY}" --directory site

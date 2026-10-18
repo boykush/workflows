@@ -1,0 +1,9 @@
+{
+  "name": "techdocs-generator",
+  "private": true,
+  "description": "What .github/workflows/techdocs.yml builds and publishes TechDocs with.",
+  "dependencies": {
+    "@mermaid-js/mermaid-cli": "12.0.0",
+    "@techdocs/cli": "1.12.0"
+  }
+}

@@ -9,6 +9,7 @@ public にしてあるのは、個人アカウントの private repo に置い�
 | パス | 種類 | 役割 |
 | --- | --- | --- |
 | `.github/workflows/ai-review.yml` | reusable workflow | owner の PR をレビューし、Claude GitHub App として承認するか変更を求める |
+| `.github/workflows/techdocs.yml` | reusable workflow | repo の `docs/` を TechDocs として build し、Backstage が読む R2 のバケットに publish する |
 | `.github/actions/claude-code-token/` | composite action | Claude Code の OAuth token を Parameter Store から、呼び出した run の OIDC で読む |
 | `.github/actions/github-app-token/` | composite action | GitHub App のインストールトークンを、private key を AWS KMS に置いたまま、呼び出した run の OIDC で発行する |
 
@@ -54,6 +55,38 @@ jobs:
 caller を足す PR 自身では check が失敗する。App の token の交換は、workflow が default branch にあることを求めるため。
 
 この repo 自身の PR も `.github/workflows/ai-review-self.yml` から ai-review にかける。ほかの repo と違って SHA で固定せず、`$/` で呼ぶ。自分の HEAD に固定すると、Renovate の bump を merge するたびに HEAD が進み、次の bump が開き続けるため。PR の commit の ai-review.yml が走るので、ai-review.yml を変える PR は、変えた後の版に review される。
+
+### techdocs
+
+repo root の `mkdocs.yml` と `docs/` を build し、Backstage の Docs タブに出す。Backstage の image には MkDocs が無いので、build はここで行い、Backstage は R2 から読むだけ。
+
+```yaml
+name: TechDocs
+
+on:
+  push:
+    branches: [main]
+    paths: [docs/**, mkdocs.yml]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  techdocs:
+    uses: boykush/workflows/.github/workflows/techdocs.yml@<SHA>
+    permissions:
+      contents: read
+      id-token: write
+```
+
+- publish 先は catalog の entity で決まる。既定は repo と同じ名前の Component（`default/component/<repo>`）で、違うなら `entity` を渡す
+- mermaid の図は build 時に SVG にする（`mkdocs-mermaid-to-svg`）。Backstage 側に描く addon が無いため。`mkdocs.yml` に plugin を書く必要は無い——`techdocs-cli` が知らない plugin を消すので、workflow が自分で足している
+- generator の version は `techdocs/` の lockfile が持ち、呼び出された SHA のまま checkout して入れる
+
+入れるときに要るもの:
+
+- [infrastructure-as-code](https://github.com/boykush/infrastructure-as-code) の `terraform/variables.tf` で、`techdocs_repositories` に repo を足す。R2 の token を読む role の trust がそこから組まれ、main からの run しか通さない
+- [github-management](https://github.com/boykush/github-management) の catalog で、その repo の Component に `backstage.io/techdocs-ref: dir:.` を付ける。付けないと Docs タブが出ない
 
 ### github-app-token
 
