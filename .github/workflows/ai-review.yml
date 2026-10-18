@@ -25,7 +25,7 @@ jobs:
     permissions:
       contents: read # checkout
       pull-requests: read # check the submitted review against the verdict
-      id-token: write # the Claude Code token, and the Claude GitHub App's token
+      id-token: write # the catalog, the Claude Code token, and the Claude GitHub App's token
     steps:
       - name: Checkout the pull request
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -60,13 +60,19 @@ jobs:
       # the review: without the tags, the change would pass against fewer rules than bind it.
       - name: Declare the repository's tags from the catalog
         env:
-          CATALOG_URL: https://backstage.boykush.com/api/mcp-actions/v1/catalog
+          CATALOG_HOST: https://catalog-mcp-ci.boykush.com
           NAME: ${{ github.event.repository.name }}
         run: |
           set -euo pipefail
+          # The catalog lets this workflow in by the run's OIDC token, asked for with the
+          # host as its audience, so no secret is handed out.
+          token=$(curl -fsS -m 20 -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$CATALOG_HOST" | jq -r .value)
+          echo "::add-mask::$token"
           request=$(jq -nc --arg name "$NAME" \
             '{jsonrpc:"2.0",id:1,method:"tools/call",params:{name:"catalog.get-catalog-entity",arguments:{kind:"Component",name:$name}}}')
-          response=$(curl -fsS -m 20 "$CATALOG_URL" \
+          response=$(curl -fsS -m 20 "$CATALOG_HOST/mcp" \
+            -H "Authorization: Bearer $token" \
             -H 'Content-Type: application/json' \
             -H 'Accept: application/json, text/event-stream' \
             -d "$request")
@@ -74,7 +80,7 @@ jobs:
           if grep -q '^data: ' <<<"$response"; then
             response=$(sed -n 's/^data: //p' <<<"$response")
           fi
-          # The catalog is public and read-only, so what it answered can go in the log.
+          # The catalog holds no secrets and this reads it only, so the answer can go in the log.
           if ! jq -e '.result.isError != true and .result.content[0].text != null' <<<"$response" > /dev/null; then
             echo "::error::The catalog did not return component:$NAME: $response"
             exit 1
