@@ -1,0 +1,119 @@
+# Carries a Dependabot security update to merge without anyone waiting on it: approves
+# it as the pr-approver App and turns on GitHub's auto-merge as the repo-writer App, so
+# GitHub merges it the moment the required checks pass. boykush/github-management turns
+# security updates on and fans the caller out to every owned repo.
+name: dependabot-merge
+
+on:
+  workflow_call:
+
+permissions: {}
+
+jobs:
+  merge:
+    name: merge
+    # The pull request's author by id, which no one can spoof. Both Apps also trust only
+    # a run Dependabot woke (boykush/infrastructure-as-code), so another push to the
+    # branch leaves the run unable to sign.
+    if: github.event.pull_request.user.id == 49699333
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: dependabot-merge-${{ github.repository }}-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      contents: read # look for a dependabot.yml
+      pull-requests: read # fetch-metadata reads the pull request's commits
+      id-token: write # sign as the pr-approver and repo-writer Apps
+    steps:
+      - name: Read the update
+        id: meta
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+
+      # Version updates are Renovate's, so a Dependabot PR is a security fix only while
+      # the repo has no dependabot.yml. Majors wait for a person, as Renovate's do.
+      - name: Decide
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          UPDATE_TYPE: ${{ steps.meta.outputs.update-type }}
+        run: |
+          set -euo pipefail
+
+          for f in .github/dependabot.yml .github/dependabot.yaml; do
+            if gh api "repos/$REPO/contents/$f" --silent 2>/dev/null; then
+              echo "::notice::$f is there, so this may be a version update — leaving it to review"
+              echo "go=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+
+          case "$UPDATE_TYPE" in
+            version-update:semver-patch | version-update:semver-minor) ;;
+            *)
+              echo "::notice::'$UPDATE_TYPE' is left to review"
+              echo "go=false" >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+          esac
+          echo "go=true" >> "$GITHUB_OUTPUT"
+
+          # A repo that has not opted into auto-merge still gets the approval, for a
+          # person to merge on; only the auto-merge is skipped.
+          auto=$(gh api graphql -F owner="${REPO%/*}" -F name="${REPO#*/}" \
+            -f query='query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { autoMergeAllowed } }' \
+            --jq .data.repository.autoMergeAllowed)
+          if [ "$auto" != "true" ]; then
+            echo "::notice::$REPO does not allow auto-merge — approving only"
+          fi
+          echo "auto=$auto" >> "$GITHUB_OUTPUT"
+
+      - name: Generate approver App token
+        if: steps.decide.outputs.go == 'true'
+        id: approver
+        uses: $/.github/actions/github-app-token
+        with:
+          app: pr-approver
+          permission-pull-requests: write
+
+      # A push dismisses an earlier approval, so what counts is one on this head commit.
+      - name: Approve
+        if: steps.decide.outputs.go == 'true'
+        env:
+          GH_TOKEN: ${{ steps.approver.outputs.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          approved=$(gh api "repos/$REPO/pulls/$PR/reviews" --paginate \
+            --jq ".[] | select(.user.login == \"boykush-pr-approver[bot]\" and .state == \"APPROVED\" and .commit_id == \"$HEAD_SHA\") | .id")
+
+          if [ -n "$approved" ]; then
+            echo "= already approved at $HEAD_SHA"
+          else
+            gh api "repos/$REPO/pulls/$PR/reviews" --method POST \
+              --field event=APPROVE --field commit_id="$HEAD_SHA" >/dev/null
+            echo "+ approved at $HEAD_SHA"
+          fi
+
+      # Not GITHUB_TOKEN: a merge it set up starts no workflow on main. Whether a repo
+      # merges this way is its allow_auto_merge, and where repo-writer is installed.
+      - name: Generate writer App token
+        if: steps.decide.outputs.go == 'true' && steps.decide.outputs.auto == 'true'
+        id: writer
+        uses: $/.github/actions/github-app-token
+        with:
+          app: repo-writer
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Turn on auto-merge
+        if: steps.decide.outputs.go == 'true' && steps.decide.outputs.auto == 'true'
+        env:
+          GH_TOKEN: ${{ steps.writer.outputs.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: gh pr merge "$PR" --repo "$REPO" --auto --squash

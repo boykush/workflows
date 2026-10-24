@@ -9,6 +9,7 @@ public にしてあるのは、個人アカウントの private repo に置い�
 | パス | 種類 | 役割 |
 | --- | --- | --- |
 | `.github/workflows/ai-review.yml` | reusable workflow | owner の PR をレビューし、Claude GitHub App として承認するか変更を求める |
+| `.github/workflows/dependabot-merge.yml` | reusable workflow | Dependabot の security update を承認し、GitHub の auto-merge を有効にする |
 | `.github/actions/claude-code-token/` | composite action | Claude Code の OAuth token を Parameter Store から、呼び出した run の OIDC で読む |
 | `.github/actions/github-app-token/` | composite action | GitHub App のインストールトークンを、private key を AWS KMS に置いたまま、呼び出した run の OIDC で発行する |
 
@@ -54,6 +55,15 @@ jobs:
 caller を足す PR 自身では check が失敗する。App の token の交換は、workflow が default branch にあることを求めるため。
 
 この repo 自身の PR も `.github/workflows/ai-review-self.yml` から ai-review にかける。ほかの repo と違って SHA で固定せず、`$/` で呼ぶ。自分の HEAD に固定すると、Renovate の bump を merge するたびに HEAD が進み、次の bump が開き続けるため。PR の commit の ai-review.yml が走るので、ai-review.yml を変える PR は、変えた後の版に review される。
+
+### dependabot-merge
+
+脆弱性の修正は Dependabot security updates が出し、版を最新に保つのは Renovate が受け持つ。この workflow は前者の PR を待たせずに merge へ運ぶ。caller と security updates の有効化は [github-management](https://github.com/boykush/github-management) が全 owned repo に配るので、repo ごとに置くものは無い。
+
+- 対象は Dependabot が開いて Dependabot が起こした run だけ。repo に `dependabot.yml` があると version update と区別できないので手を付けない。major も人が見る
+- pr-approver App で承認し、repo-writer App で auto-merge を有効にする。merge するのは GitHub で、待つのは ruleset の required checks だけ。GITHUB_TOKEN で有効にすると、その merge は main の workflow を起こさない
+- どの repo で自動で merge するかは、その repo の `allow_auto_merge`（github-management）が決める。許していない repo では承認までで止め、人が merge する。許しているのに repo-writer が install されていなければ、token の発行で失敗する
+- 2つの App は、infrastructure-as-code の `github_apps` で、Dependabot の run がこの file から呼んだときに限って署名を許す。job は PR のコードを checkout も実行もしないので、署名が PR の中身に渡ることは無い
 
 ### github-app-token
 
