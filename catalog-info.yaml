@@ -8,7 +8,7 @@ metadata:
   name: workflows
   description: >-
     repo をまたいで呼ぶ reusable workflow と action の置き場で、呼び出し側は SHA で固定する。PR を boykush/adr
-    のルールと照合して Claude GitHub App として承認する ai-review、Claude Code の token を Parameter Store から読む
+    のルールと照合して Claude GitHub App として承認する ai-review、Dependabot の security update を承認して auto-merge に載せる dependabot-merge、Claude Code の token を Parameter Store から読む
     claude-code-token、GitHub App の private key を AWS KMS に置いたままトークンを発行する github-app-token を
     置く。どれを入れるかは repo ごとに決め、入れた repo から dependsOn を張る
 spec:
@@ -22,3 +22,5 @@ spec:
     - component:ai-plugins
     - component:infrastructure-as-code
     - resource:claude-github-app
+    - resource:pr-approver-app
+    - resource:repo-writer-app
