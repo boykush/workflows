@@ -39,7 +39,7 @@ jobs:
 
 - 見るのは owner の PR だけで、draft は見ない。条件は reusable workflow の中にあるので、ほかの PR でも check は `ai-review / review` の名前で skipped になる
 - 判定の基準は、今は [boykush/adr](https://github.com/boykush/adr) のルールだけ。照らし方は adr-remote-mcp の skill `adr-review` に従い、ルールの文法は `ade-rule-dsl` の reference で確かめる。接続先も skill も `apm.yml` の依存で、この repo を呼び出された SHA のまま checkout して Claude に渡す。レビューされる repo が同じ skill を持っていても、読むのはこちらの checkout の方
-- 判定に加えて、[github-management](https://github.com/boykush/github-management) の catalog の関係をたどり、変更がほかの repo に及ぶか、対になる PR があるか、自分の entity が実態とずれないかを本文の別の節に書く（skill `catalog-review`、この repo の `.apm/skills/` にある）。試しに入れている段階で、判定には含めない。catalog は MCP サーバーとして渡さず、step で全 entity を読んだファイルを渡す。catalog に入る OIDC token は数分で切れ、レビューが終わるまで持たないため。読めなければ節を省いてレビューは続ける
+- 判定に加えて、[github-management](https://github.com/boykush/github-management) の catalog の関係をたどり、変更がほかの repo に及ぶか、対になる PR があるか、自分の entity が実態とずれないかを本文の別の節に書く（skill `catalog-review`、この repo の `.apm/skills/` にある）。試しに入れている段階で、判定には含めない。catalog は tag を読んだ step と同じ run の OIDC token で MCP サーバーとして Claude に渡す。その MCP の設定は working directory の外に置き、token が本文に入らないようにする。読めなければ節を省いてレビューは続ける
 - 違反が無ければ承認し、あれば指摘を本文にして変更を求める。どちらも Claude GitHub App（claude[bot]）として Claude 自身が出す。action は run の OIDC を App の token に替え、終わるときに revoke するので、後の step からは出せない。Claude が打てるのは、この PR 番号と本文のファイルを名指ししたコマンドだけ。読めるのは working directory の中だけなので、その外のものが review の本文に入ることは無い
 - モデルは Sonnet。`--model sonnet` と alias で指定しているので、Claude Code の既定が変わっても入れ替わらず、新しい Sonnet にはここを変えずに上がる
 - 承認するかを Claude が決めるので、最後の step で、読んだ commit への claude[bot] の review が構造化出力の判定と合っているかを確かめ、合わなければ失敗する

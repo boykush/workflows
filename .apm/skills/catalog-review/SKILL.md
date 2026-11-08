@@ -9,7 +9,7 @@ PR の変更が、catalog の関係をたどった先のほかの repo に及ぶ
 
 ## 読む
 
-1. catalog は頼んだ側が渡す。default branch の状態の全 entity と、その relations。PR で変えた `catalog-info.yaml` はまだ反映されていないので、レビューされる repo 自身の entity は working directory のファイルを正とする
+1. catalog は MCP サーバーの `catalog` で引く（`get-catalog-entity`、`query-catalog-entities`。relations で関係を問うときは `relations.<type>` に entity ref を渡す）。返るのは default branch の状態で、PR で変えた `catalog-info.yaml` はまだ反映されていないので、レビューされる repo 自身の entity は working directory のファイルを正とする
 2. レビューされる repo の Component から関係をたどる。それに依るもの（`dependencyOf`、提供する API の `apiConsumedBy`）と、それが依るもの（`dependsOn`、`consumesApi`）。全 repo に効く関係は edge にならず、範囲として description に書かれている
 3. PR の説明から対になる PR（`boykush/<repo>#<番号>` や URL）を拾い、`gh pr view` と `gh pr diff` で読む。説明に無くても、たどった先の repo の open な PR を `gh pr list --repo boykush/<repo> --author boykush --state open` で探してよい
 

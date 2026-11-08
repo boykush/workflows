@@ -129,7 +129,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:55a26e190b741f059be688eff797ccd86f62908a8ec72ab8133d78c2d7610638
+  content_hash: sha256:5de5c20c1ee46d8d3524de79416e1847a910be18d33e621c998b874448e9e5ea
 - kind: project-relative
   target: codex
   value: .agents/skills/ade-rule-dsl
@@ -219,7 +219,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:55a26e190b741f059be688eff797ccd86f62908a8ec72ab8133d78c2d7610638
+  content_hash: sha256:5de5c20c1ee46d8d3524de79416e1847a910be18d33e621c998b874448e9e5ea
 - kind: uri
   target: mcp
   value: adr
@@ -259,5 +259,5 @@ local_deployed_files:
 - .claude/skills/catalog-review
 - .claude/skills/catalog-review/SKILL.md
 local_deployed_file_hashes:
-  .agents/skills/catalog-review/SKILL.md: sha256:55a26e190b741f059be688eff797ccd86f62908a8ec72ab8133d78c2d7610638
-  .claude/skills/catalog-review/SKILL.md: sha256:55a26e190b741f059be688eff797ccd86f62908a8ec72ab8133d78c2d7610638
+  .agents/skills/catalog-review/SKILL.md: sha256:5de5c20c1ee46d8d3524de79416e1847a910be18d33e621c998b874448e9e5ea
+  .claude/skills/catalog-review/SKILL.md: sha256:5de5c20c1ee46d8d3524de79416e1847a910be18d33e621c998b874448e9e5ea
