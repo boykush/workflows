@@ -113,6 +113,24 @@ deployments:
   active_owner: boykush/ai-plugins/plugins/adr-remote-mcp
   content_hash: sha256:7db35c60c4f6922baaf1118445ef6282dc4ed01454ea1ebab4ef6f358790eb67
 - kind: project-relative
+  target: claude
+  value: .claude/skills/catalog-review
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/catalog-review/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:55a26e190b741f059be688eff797ccd86f62908a8ec72ab8133d78c2d7610638
+- kind: project-relative
   target: codex
   value: .agents/skills/ade-rule-dsl
   runtime: null
@@ -184,6 +202,24 @@ deployments:
   - boykush/ai-plugins/plugins/adr-remote-mcp
   active_owner: boykush/ai-plugins/plugins/adr-remote-mcp
   content_hash: sha256:7db35c60c4f6922baaf1118445ef6282dc4ed01454ea1ebab4ef6f358790eb67
+- kind: project-relative
+  target: legacy
+  value: .agents/skills/catalog-review
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: null
+- kind: project-relative
+  target: legacy
+  value: .agents/skills/catalog-review/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:55a26e190b741f059be688eff797ccd86f62908a8ec72ab8133d78c2d7610638
 - kind: uri
   target: mcp
   value: adr
@@ -217,3 +253,11 @@ mcp_target_servers:
   - adr
 mcp_config_provenance:
   adr: adr-remote-mcp
+local_deployed_files:
+- .agents/skills/catalog-review
+- .agents/skills/catalog-review/SKILL.md
+- .claude/skills/catalog-review
+- .claude/skills/catalog-review/SKILL.md
+local_deployed_file_hashes:
+  .agents/skills/catalog-review/SKILL.md: sha256:55a26e190b741f059be688eff797ccd86f62908a8ec72ab8133d78c2d7610638
+  .claude/skills/catalog-review/SKILL.md: sha256:55a26e190b741f059be688eff797ccd86f62908a8ec72ab8133d78c2d7610638

@@ -4,6 +4,9 @@ description: Agent config for working in this repository, which ai-review also r
 targets:
   - claude
   - codex
+# Consent to deploy this repository's own skills from .apm/skills/; without it apm audit warns
+# that the consent is only implicit.
+includes: auto
 # apm install generates .mcp.json and .codex/config.toml from this file; don't edit them by hand.
 # ai-review checks this repository out and hands the generated .mcp.json and the adr-review
 # and ade-rule-dsl skills to the reviewer, so its MCP server, review procedure and DSL grammar
