@@ -5,12 +5,13 @@ targets:
   - claude
   - codex
 # apm install generates .mcp.json and .codex/config.toml from this file; don't edit them by hand.
-# ai-review checks this repository out and hands the generated .mcp.json and the adr-review
-# and ade-rule-dsl skills to the reviewer, so its MCP server, review procedure and DSL grammar
-# are pinned here as well.
+# ai-review checks this repository out and hands the generated .mcp.json and the adr-review,
+# ade-rule-dsl and catalog-review skills to the reviewer, so its MCP servers, review procedures
+# and DSL grammar are pinned here as well.
 dependencies:
   apm:
     # boykush/ai-plugins calls ai-review at main instead of pinning this repository back:
     # were both pinned by SHA, Renovate would bump the two in turn forever.
     - boykush/ai-plugins/plugins/adr-remote-mcp#f0a74a4a91aa504d9c262bc087ed2ba417b42e9e
+    - boykush/ai-plugins/plugins/catalog-remote-mcp#f01fe3fcf430cd6a4d5d33f6ed1790cc725b507f
   mcp: []

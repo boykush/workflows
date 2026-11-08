@@ -3,6 +3,10 @@
     "adr": {
       "type": "http",
       "url": "https://adr-mcp.boykush.com/mcp"
+    },
+    "catalog": {
+      "type": "http",
+      "url": "https://catalog-mcp.boykush.com/mcp"
     }
   }
 }

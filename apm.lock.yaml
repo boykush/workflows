@@ -39,6 +39,36 @@ dependencies:
     .claude/skills/adr-check/SKILL.md: sha256:0a96dea6cda4f3dc8e3a570befa669a5d81e506960ad19e4b61325a5c409b26d
     .claude/skills/adr-review/SKILL.md: sha256:7db35c60c4f6922baaf1118445ef6282dc4ed01454ea1ebab4ef6f358790eb67
   content_hash: sha256:c0afe43bc905f9f6c56e6120468c8886b623b605b158fdf8c36512440d7f7ffc
+- repo_url: boykush/ai-plugins
+  name: catalog-remote-mcp
+  host: github.com
+  resolved_commit: f01fe3fcf430cd6a4d5d33f6ed1790cc725b507f
+  resolved_ref: f01fe3fcf430cd6a4d5d33f6ed1790cc725b507f
+  version: 0.1.0
+  virtual_path: plugins/catalog-remote-mcp
+  is_virtual: true
+  package_type: apm_package
+  content_hash: sha256:944671bcea80205b47f6b473bf11e18521a2d899cf51b7d8df98ce95f8752cef
+- repo_url: boykush/backstage-app
+  name: catalog-review
+  host: github.com
+  resolved_commit: 0cef3d3e13b2518a765af3ba1578384d9baf0fc1
+  resolved_ref: 0cef3d3e13b2518a765af3ba1578384d9baf0fc1
+  version: unknown
+  virtual_path: agent-plugins/catalog-remote-mcp/skills/catalog-review
+  is_virtual: true
+  depth: 2
+  resolved_by: boykush/ai-plugins
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/catalog-review
+  - .agents/skills/catalog-review/SKILL.md
+  - .claude/skills/catalog-review
+  - .claude/skills/catalog-review/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/catalog-review/SKILL.md: sha256:5de5c20c1ee46d8d3524de79416e1847a910be18d33e621c998b874448e9e5ea
+    .claude/skills/catalog-review/SKILL.md: sha256:5de5c20c1ee46d8d3524de79416e1847a910be18d33e621c998b874448e9e5ea
+  content_hash: sha256:fbf46853b704568e27ce082917bd46fe171ef95e9947c6ec5559679fbe54d65b
 deployments:
 - kind: project-relative
   target: claude
@@ -113,6 +143,24 @@ deployments:
   active_owner: boykush/ai-plugins/plugins/adr-remote-mcp
   content_hash: sha256:7db35c60c4f6922baaf1118445ef6282dc4ed01454ea1ebab4ef6f358790eb67
 - kind: project-relative
+  target: claude
+  value: .claude/skills/catalog-review
+  runtime: null
+  scope: project
+  owners:
+  - boykush/backstage-app/agent-plugins/catalog-remote-mcp/skills/catalog-review
+  active_owner: boykush/backstage-app/agent-plugins/catalog-remote-mcp/skills/catalog-review
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/catalog-review/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - boykush/backstage-app/agent-plugins/catalog-remote-mcp/skills/catalog-review
+  active_owner: boykush/backstage-app/agent-plugins/catalog-remote-mcp/skills/catalog-review
+  content_hash: sha256:5de5c20c1ee46d8d3524de79416e1847a910be18d33e621c998b874448e9e5ea
+- kind: project-relative
   target: codex
   value: .agents/skills/ade-rule-dsl
   runtime: null
@@ -184,9 +232,36 @@ deployments:
   - boykush/ai-plugins/plugins/adr-remote-mcp
   active_owner: boykush/ai-plugins/plugins/adr-remote-mcp
   content_hash: sha256:7db35c60c4f6922baaf1118445ef6282dc4ed01454ea1ebab4ef6f358790eb67
+- kind: project-relative
+  target: codex
+  value: .agents/skills/catalog-review
+  runtime: null
+  scope: project
+  owners:
+  - boykush/backstage-app/agent-plugins/catalog-remote-mcp/skills/catalog-review
+  active_owner: boykush/backstage-app/agent-plugins/catalog-remote-mcp/skills/catalog-review
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/catalog-review/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - boykush/backstage-app/agent-plugins/catalog-remote-mcp/skills/catalog-review
+  active_owner: boykush/backstage-app/agent-plugins/catalog-remote-mcp/skills/catalog-review
+  content_hash: sha256:5de5c20c1ee46d8d3524de79416e1847a910be18d33e621c998b874448e9e5ea
 - kind: uri
   target: mcp
   value: adr
+  runtime: claude
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: null
+- kind: uri
+  target: mcp
+  value: catalog
   runtime: claude
   scope: project
   owners:
@@ -202,18 +277,36 @@ deployments:
   - .
   active_owner: .
   content_hash: null
+- kind: uri
+  target: mcp
+  value: catalog
+  runtime: codex
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: null
 mcp_servers:
 - adr
+- catalog
 mcp_configs:
   adr:
     name: adr
     transport: http
     registry: false
     url: https://adr-mcp.boykush.com/mcp
+  catalog:
+    name: catalog
+    transport: http
+    registry: false
+    url: https://catalog-mcp.boykush.com/mcp
 mcp_target_servers:
   claude:
   - adr
+  - catalog
   codex:
   - adr
+  - catalog
 mcp_config_provenance:
   adr: adr-remote-mcp
+  catalog: catalog-remote-mcp
