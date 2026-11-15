@@ -1,15 +1,14 @@
-# Ships the Agent Plugins a repository keeps under one directory: writes the apm.yml
-# apm reads next to each plugin.json, checks it deploys to Claude and Codex, holds a
-# changed plugin to a new version, and tags each version on the default branch as
-# <name>--v<version>, which consumers pin and Renovate follows. A repository opts in
-# by calling this file pinned by SHA on pull_request and push.
-name: agent-plugins
+# Ships the apm packages a repository keeps under one directory: checks each deploys
+# to Claude and Codex, holds a changed package to a new version, and tags each version
+# on the default branch as <name>--v<version>, which consumers pin and Renovate
+# follows. A repository opts in by calling this file pinned by SHA on pull_request and push.
+name: apm-plugins
 
 on:
   workflow_call:
     inputs:
       path:
-        description: The directory holding one Agent Plugin per subdirectory, e.g. plugins.
+        description: The directory holding one apm package per subdirectory, e.g. plugins.
         required: true
         type: string
 
@@ -35,7 +34,7 @@ jobs:
         with:
           repository: ${{ job.workflow_repository }}
           ref: ${{ job.workflow_sha }}
-          path: .agent-plugins
+          path: .apm-plugins
           persist-credentials: false
 
       # The release archive, pinned by its checksum; bump APM_VERSION and APM_SHA256
@@ -53,28 +52,17 @@ jobs:
           tar -xzf "$archive" -C "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/apm-linux-x86_64" >> "$GITHUB_PATH"
 
-      - name: Check apm.yml is generated
-        env:
-          PLUGINS: ${{ inputs.path }}
-        run: |
-          set -euo pipefail
-          .agent-plugins/.github/scripts/agent-plugins.sh generate "$PLUGINS"
-          if ! git diff --exit-code -- "$PLUGINS"; then
-            echo "::error::apm.yml is out of date; commit it as the diff above shows"
-            exit 1
-          fi
-
       - name: Check each plugin deploys to Claude and Codex
         env:
           PLUGINS: ${{ inputs.path }}
-        run: .agent-plugins/.github/scripts/agent-plugins.sh check "$PLUGINS"
+        run: .apm-plugins/.github/scripts/apm-plugins.sh check "$PLUGINS"
 
       - name: Check a changed plugin has a new version
         if: github.event_name == 'pull_request'
         env:
           PLUGINS: ${{ inputs.path }}
           BASE: ${{ github.event.pull_request.base.sha }}
-        run: .agent-plugins/.github/scripts/agent-plugins.sh bump "$PLUGINS" "$(git merge-base "$BASE" HEAD)"
+        run: .apm-plugins/.github/scripts/apm-plugins.sh bump "$PLUGINS" "$(git merge-base "$BASE" HEAD)"
 
   release:
     name: release
@@ -84,7 +72,7 @@ jobs:
     timeout-minutes: 5
     # Two pushes landing close together tag in turn, never over each other.
     concurrency:
-      group: agent-plugins-release-${{ github.repository }}
+      group: apm-plugins-release-${{ github.repository }}
     permissions:
       contents: write # create the tags
     steps:
@@ -99,11 +87,11 @@ jobs:
         with:
           repository: ${{ job.workflow_repository }}
           ref: ${{ job.workflow_sha }}
-          path: .agent-plugins
+          path: .apm-plugins
           persist-credentials: false
 
       - name: Tag each version
         env:
           GH_TOKEN: ${{ github.token }}
           PLUGINS: ${{ inputs.path }}
-        run: .agent-plugins/.github/scripts/agent-plugins.sh tag "$PLUGINS"
+        run: .apm-plugins/.github/scripts/apm-plugins.sh tag "$PLUGINS"
