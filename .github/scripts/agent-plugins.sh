@@ -24,14 +24,26 @@ tag_of() {
 # apm can't deploy an Agent Plugin to Claude or Codex, but it reads an apm.yml next to
 # plugin.json and picks skills/ up on its own, so the MCP servers are all it is told.
 generate() {
-  local dir
+  local dir skill
   while read -r dir; do
     {
       echo "# Written from plugin.json and mcp.json by boykush/workflows' agent-plugins.yml; edit those."
       # A JSON string reads as a double-quoted YAML scalar as it is.
       jq -r '"name: \(.name | tojson)", "version: \(.version | tojson)", "description: \(.description | tojson)", "author: \(.author.name | tojson)"' "$dir/plugin.json"
       echo 'dependencies:'
-      echo '  apm: []'
+      # With no dependency at all, apm takes the directory for an Agent Plugin again and
+      # deploys nothing, so a plugin with skills only names them; listed, they are counted
+      # twice and apm warns that one replaced the other, which is harmless.
+      if [ "$(jq '.mcpServers // {} | length' "$dir/mcp.json" 2>/dev/null || echo 0)" -gt 0 ]; then
+        echo '  apm: []'
+      elif ls "$dir"/skills/*/SKILL.md > /dev/null 2>&1; then
+        echo '  apm:'
+        for skill in "$dir"/skills/*/SKILL.md; do
+          printf '    - ./skills/%s\n' "$(basename "$(dirname "$skill")")"
+        done
+      else
+        echo '  apm: []'
+      fi
       if [ ! -f "$dir/mcp.json" ]; then
         echo '  mcp: []'
       else
