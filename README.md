@@ -10,6 +10,7 @@ public にしてあるのは、個人アカウントの private repo に置い�
 | --- | --- | --- |
 | `.github/workflows/ai-review.yml` | reusable workflow | owner の PR をレビューし、Claude GitHub App として承認するか変更を求める |
 | `.github/workflows/dependabot-merge.yml` | reusable workflow | Dependabot の security update を承認し、GitHub の auto-merge を有効にする |
+| `.github/workflows/agent-plugins.yml` | reusable workflow | repo が持つ Agent Plugins を apm で配れる形にし、版ごとに tag を打つ |
 | `.github/actions/claude-code-token/` | composite action | Claude Code の OAuth token を Parameter Store から、呼び出した run の OIDC で読む |
 | `.github/actions/github-app-token/` | composite action | GitHub App のインストールトークンを、private key を AWS KMS に置いたまま、呼び出した run の OIDC で発行する |
 
@@ -64,6 +65,37 @@ caller を足す PR 自身では check が失敗する。App の token の交換
 - pr-approver App で承認し、repo-writer App で auto-merge を有効にする。merge するのは GitHub で、待つのは ruleset の required checks だけ。GITHUB_TOKEN で有効にすると、その merge は main の workflow を起こさない
 - どの repo で自動で merge するかは、その repo の `allow_auto_merge`（github-management）が決める。許していない repo では承認までで止め、人が merge する。許しているのに repo-writer が install されていなければ、token の発行で失敗する
 - 2つの App は、infrastructure-as-code の `github_apps` で、Dependabot の run がこの file から呼んだときに限って署名を許す。job は PR のコードを checkout も実行もしないので、署名が PR の中身に渡ることは無い
+
+### agent-plugins
+
+MCP サーバーや skill を配る repo が、それを [Agent Plugins](https://agent-plugins.org/specification) の形で持ち、自分で配るためのもの。plugin はそれと一緒に変わる repo が持ち、consumer はその repo を直接引く。
+
+入れる repo が自分で caller を置く:
+
+```yaml
+name: agent-plugins
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  agent-plugins:
+    uses: boykush/workflows/.github/workflows/agent-plugins.yml@<SHA>
+    with:
+      path: plugins
+    permissions:
+      contents: write
+```
+
+- `path` の下に、plugin を1つずつディレクトリで置く（`plugin.json`・`mcp.json`・`skills/`）
+- apm は Agent Plugins の形を Claude と Codex へは展開しないが、`plugin.json` の隣の `apm.yml` は読み、`skills/` も自分で拾う。そこで MCP サーバーだけを書いた `apm.yml` を `plugin.json` と `mcp.json` から生成し、**commit する**。PR では生成し直して差分が無いことと、使い捨ての consumer に install して MCP サーバーと skill が Claude 向けと Codex 向けの両方に落ちることを見る。手元で生成し直すなら `.github/scripts/agent-plugins.sh generate plugins`
+- **版の持ち主は `plugin.json` の `version`**。default branch への push で、まだ無い `<name>--v<version>` の tag を打つ。apm の semver range が読む tag の形の1つで、consumer はこの tag に SHA を添えて固定する（`boykush/<repo>/plugins/<name>#<SHA> # <name>--v<version>`）
+- PR で plugin の中身が変わったのに、その版の tag がもうあると失敗する。同じ tag のまま中身が変わると consumer に届かないため。README.md だけの変更は数えない
+- apm は release の archive を checksum で固定して入れる。上げるときは workflow の `APM_VERSION` と `APM_SHA256` を一緒に変える
 
 ### github-app-token
 
