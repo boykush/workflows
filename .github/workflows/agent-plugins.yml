@@ -1,0 +1,109 @@
+# Ships the Agent Plugins a repository keeps under one directory: writes the apm.yml
+# apm reads next to each plugin.json, checks it deploys to Claude and Codex, holds a
+# changed plugin to a new version, and tags each version on the default branch as
+# <name>--v<version>, which consumers pin and Renovate follows. A repository opts in
+# by calling this file pinned by SHA on pull_request and push.
+name: agent-plugins
+
+on:
+  workflow_call:
+    inputs:
+      path:
+        description: The directory holding one Agent Plugin per subdirectory, e.g. plugins.
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read # checkout
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # the bump check diffs against the base and looks up existing tags
+
+      # This repository at the commit the caller pinned, for the script the steps run.
+      - name: Checkout the steps
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .agent-plugins
+          persist-credentials: false
+
+      # The release archive, pinned by its checksum; bump APM_VERSION and APM_SHA256
+      # together, from the release's apm-linux-x86_64.tar.gz.sha256.
+      - name: Install apm
+        env:
+          APM_VERSION: 0.35.1
+          APM_SHA256: e7f06b9c80e26152ab579fe50d7dcd3d76ebbd8eacd44eed424e39880044eb3e
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/apm.tar.gz"
+          curl -fsSL -o "$archive" \
+            "https://github.com/microsoft/apm/releases/download/v${APM_VERSION}/apm-linux-x86_64.tar.gz"
+          echo "${APM_SHA256}  ${archive}" | sha256sum --check --strict
+          tar -xzf "$archive" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/apm-linux-x86_64" >> "$GITHUB_PATH"
+
+      - name: Check apm.yml is generated
+        env:
+          PLUGINS: ${{ inputs.path }}
+        run: |
+          set -euo pipefail
+          .agent-plugins/.github/scripts/agent-plugins.sh generate "$PLUGINS"
+          if ! git diff --exit-code -- "$PLUGINS"; then
+            echo "::error::apm.yml is out of date; commit it as the diff above shows"
+            exit 1
+          fi
+
+      - name: Check each plugin deploys to Claude and Codex
+        env:
+          PLUGINS: ${{ inputs.path }}
+        run: .agent-plugins/.github/scripts/agent-plugins.sh check "$PLUGINS"
+
+      - name: Check a changed plugin has a new version
+        if: github.event_name == 'pull_request'
+        env:
+          PLUGINS: ${{ inputs.path }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: .agent-plugins/.github/scripts/agent-plugins.sh bump "$PLUGINS" "$(git merge-base "$BASE" HEAD)"
+
+  release:
+    name: release
+    needs: check
+    if: github.event_name == 'push' && github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Two pushes landing close together tag in turn, never over each other.
+    concurrency:
+      group: agent-plugins-release-${{ github.repository }}
+    permissions:
+      contents: write # create the tags
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # look up the tags already there
+
+      - name: Checkout the steps
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .agent-plugins
+          persist-credentials: false
+
+      - name: Tag each version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLUGINS: ${{ inputs.path }}
+        run: .agent-plugins/.github/scripts/agent-plugins.sh tag "$PLUGINS"
