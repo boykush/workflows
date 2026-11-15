@@ -92,7 +92,7 @@ jobs:
 ```
 
 - `path` の下に、plugin を1つずつディレクトリで置く（`plugin.json`・`mcp.json`・`skills/`）
-- apm は Agent Plugins の形を Claude と Codex へは展開しないが、`plugin.json` の隣の `apm.yml` は読み、`skills/` も自分で拾う。そこで MCP サーバーだけを書いた `apm.yml` を `plugin.json` と `mcp.json` から生成し、**commit する**。PR では生成し直して差分が無いことと、使い捨ての consumer に install して MCP サーバーと skill が Claude 向けと Codex 向けの両方に落ちることを見る。手元で生成し直すなら `.github/scripts/agent-plugins.sh generate plugins`
+- apm は Agent Plugins の形を Claude と Codex へは展開しないが、`plugin.json` の隣の `apm.yml` は読み、`skills/` も自分で拾う。そこで MCP サーバーだけを書いた `apm.yml` を `plugin.json` と `mcp.json` から生成し、**commit する**。MCP サーバーを持たない plugin では依存が空になり、apm がまた Agent Plugins として扱って何も展開しないので、そのときだけ skill を並べる。PR では生成し直して差分が無いことと、使い捨ての consumer に install して MCP サーバーと skill が Claude 向けと Codex 向けの両方に落ちることを見る。手元で生成し直すなら `.github/scripts/agent-plugins.sh generate plugins`
 - **版の持ち主は `plugin.json` の `version`**。default branch への push で、まだ無い `<name>--v<version>` の tag を打つ。apm の semver range が読む tag の形の1つで、consumer はこの tag に SHA を添えて固定する（`boykush/<repo>/plugins/<name>#<SHA> # <name>--v<version>`）
 - PR で plugin の中身が変わったのに、その版の tag がもうあると失敗する。同じ tag のまま中身が変わると consumer に届かないため。README.md だけの変更は数えない
 - apm は release の archive を checksum で固定して入れる。上げるときは workflow の `APM_VERSION` と `APM_SHA256` を一緒に変える
