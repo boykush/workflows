@@ -12,5 +12,5 @@ dependencies:
   apm:
     # boykush/ai-plugins calls ai-review at main instead of pinning this repository back:
     # were both pinned by SHA, Renovate would bump the two in turn forever.
-    - boykush/ai-plugins/plugins/adr-remote-mcp#b5087bb58421145cb6289560f31e72da53f22207
+    - boykush/ai-plugins/plugins/adr-remote-mcp#638ad89179ff48e0e9dd6624aacf3632037bb528
   mcp: []
