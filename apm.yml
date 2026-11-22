@@ -10,7 +10,7 @@ targets:
 # are pinned here as well.
 dependencies:
   apm:
-    # boykush/ai-plugins calls ai-review at main instead of pinning this repository back:
-    # were both pinned by SHA, Renovate would bump the two in turn forever.
+    # Pinned by tag, not by SHA: adr pins this repository's ai-review by SHA, and were both
+    # pinned by SHA, Renovate would bump the two in turn forever.
     - boykush/adr/plugins/adr-remote-mcp#0ace14215204963afc46838a03502819e705c4c4 # adr-remote-mcp--v0.1.0
   mcp: []
