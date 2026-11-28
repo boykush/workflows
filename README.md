@@ -55,7 +55,7 @@ jobs:
 
 caller を足す PR 自身では check が失敗する。App の token の交換は、workflow が default branch にあることを求めるため。
 
-この repo 自身の PR も `.github/workflows/ai-review-self.yml` から ai-review にかける。ほかの repo と違って SHA で固定せず、`$/` で呼ぶ。自分の HEAD に固定すると、Renovate の bump を merge するたびに HEAD が進み、次の bump が開き続けるため。PR の commit の ai-review.yml が走るので、ai-review.yml を変える PR は、変えた後の版に review される。
+この repo 自身の PR も `.github/workflows/ai-review-self.yml` から ai-review にかける。ほかの repo と違って SHA で固定せず、`$/` で呼ぶ。自分の HEAD に固定すると、Renovate の bump を merge するたびに HEAD が進み、次の bump が開き続けるため。ただし ai-review.yml を変える PR は review されず、check が失敗する。claude-code-action が、呼ばれた reusable workflow が default branch の内容と同じであることを求め、違えば何もせずに終わるため。その PR は owner が ruleset を bypass して merge する。
 
 ### dependabot-merge
 
